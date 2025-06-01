@@ -7,6 +7,13 @@ class CanvasDesigner {
     this.isResizing = false;
     this.canvasElements = new Map();
     this.currentImageElement = null;
+
+    // For drag fix
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.dragStartLeft = 0;
+    this.dragStartTop = 0;
+
     this.boundMouseMove = this.onMouseMove.bind(this);
     this.boundMouseUp = this.onMouseUp.bind(this);
     this.init();
@@ -113,7 +120,6 @@ class CanvasDesigner {
   }
 
   setupElementInteractions(element) {
-    let startX, startY, startLeft, startTop;
     element.onmousedown = e => {
       if (e.target.classList.contains('resize-handle')) {
         this.isResizing = true;
@@ -122,10 +128,11 @@ class CanvasDesigner {
       }
       this.selectElement(element);
       this.isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      startLeft = parseInt(element.style.left);
-      startTop = parseInt(element.style.top);
+      // FIXED: Proper drag start values
+      this.dragStartX = e.clientX;
+      this.dragStartY = e.clientY;
+      this.dragStartLeft = parseInt(element.style.left, 10) || 0;
+      this.dragStartTop = parseInt(element.style.top, 10) || 0;
       document.addEventListener('mousemove', this.boundMouseMove);
       document.addEventListener('mouseup', this.boundMouseUp);
       e.preventDefault();
@@ -143,10 +150,11 @@ class CanvasDesigner {
     if (this.isDragging && this.selectedElement) {
       const element = this.selectedElement;
       const props = this.canvasElements.get(element.id);
-      const deltaX = e.clientX - (parseInt(element.style.left) - props.x);
-      const deltaY = e.clientY - (parseInt(element.style.top) - props.y);
-      const newLeft = Math.max(0, deltaX);
-      const newTop = Math.max(0, deltaY);
+      // FIXED: Use the difference from drag start!
+      const deltaX = e.clientX - this.dragStartX;
+      const deltaY = e.clientY - this.dragStartY;
+      const newLeft = this.dragStartLeft + deltaX;
+      const newTop = this.dragStartTop + deltaY;
       element.style.left = newLeft + 'px';
       element.style.top = newTop + 'px';
       props.x = newLeft;
@@ -164,8 +172,8 @@ class CanvasDesigner {
   startResize(e, element) {
     let startX = e.clientX;
     let startY = e.clientY;
-    let startWidth = parseInt(element.style.width);
-    let startHeight = parseInt(element.style.height);
+    let startWidth = parseInt(element.style.width, 10) || 100;
+    let startHeight = parseInt(element.style.height, 10) || 100;
     const handleResize = e2 => {
       if (!this.isResizing) return;
       const deltaX = e2.clientX - startX;
@@ -278,7 +286,7 @@ class CanvasDesigner {
       input.onchange = () => {
         const prop = input.dataset.prop;
         let value = input.value;
-        if (['x','y','width','height','fontSize'].includes(prop)) value = parseInt(value);
+        if (['x','y','width','height','fontSize'].includes(prop)) value = parseInt(value, 10);
         this.updateProperty(input.dataset.id, prop, value);
       };
     });
