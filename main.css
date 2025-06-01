@@ -1,0 +1,116 @@
+/* --- Reset and Base Styles --- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 100vh; overflow: hidden;
+}
+.app-container { display: flex; height: 100vh; }
+/* --- Sidebar --- */
+.sidebar {
+    width: 300px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+    border-right: 1px solid rgba(0,0,0,0.1); padding: 20px; overflow-y: auto;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+}
+.sidebar h2 { margin-bottom: 20px; color: #333; text-align: center; }
+.tool-section { margin-bottom: 30px; }
+.tool-section h3 {
+    margin-bottom: 15px; color: #555; border-bottom: 2px solid #667eea; padding-bottom: 5px;
+}
+.tool-buttons {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
+}
+.tool-btn {
+    padding: 12px; border: none; border-radius: 8px;
+    background: linear-gradient(45deg, #667eea, #764ba2); color: white; cursor: pointer;
+    transition: all 0.3s ease; font-weight: 600;
+}
+.tool-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2);}
+.tool-btn:active { transform: translateY(0);}
+ /* --- Properties Panel --- */
+.properties-panel {
+    background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-top: 20px;
+}
+.property-group { margin-bottom: 15px; }
+.property-group label { display: block; margin-bottom: 5px; color: #333; font-weight: 500; }
+.property-group input, .property-group select, .property-group textarea {
+    width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;
+}
+.property-group textarea { resize: vertical; min-height: 60px; }
+.color-picker { width: 100%; height: 40px; padding: 0; border: none; border-radius: 5px; cursor: pointer; }
+/* --- Action Buttons --- */
+.action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+.action-btn {
+    flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;
+    transition: all 0.3s ease;
+}
+.save-btn { background: #28a745; color: white; }
+.load-btn { background: #007bff; color: white; }
+.clear-btn { background: #dc3545; color: white; }
+.action-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.2);}
+/* --- Canvas Area --- */
+.canvas-container {
+    flex: 1; position: relative; background: white; margin: 20px; border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
+}
+.canvas {
+    width: 100%; height: 100%; position: relative;
+    background: 
+        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.8) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(102,126,234,0.1) 0%, transparent 50%),
+        linear-gradient(45deg, #f8f9fa 25%, transparent 25%),
+        linear-gradient(-45deg, #f8f9fa 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f8f9fa 75%),
+        linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+    background-size: 100% 100%,100% 100%,20px 20px,20px 20px,20px 20px,20px 20px;
+    background-position: 0 0,0 0,0 0,0 10px,10px -10px,-10px 0px;
+}
+/* --- Canvas Elements --- */
+.canvas-element {
+    position: absolute; cursor: move; border: 2px solid transparent;
+    transition: border-color 0.2s ease; user-select: none;
+}
+.canvas-element:hover { border-color: rgba(102,126,234,0.5);}
+.canvas-element.selected {
+    border-color: #667eea; box-shadow: 0 0 0 1px #667eea;
+}
+.canvas-element.selected::after {
+    content: ''; position: absolute; top: -5px; right: -5px; width: 10px; height: 10px;
+    background: #667eea; border-radius: 50%; cursor: nw-resize;
+}
+/* --- Text Element --- */
+.text-element {
+    background: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px;
+    font-family: inherit; min-width: 100px; word-wrap: break-word;
+}
+/* --- Shape Elements --- */
+.shape-element { display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);}
+.rectangle { border-radius: 5px; }
+.circle { border-radius: 50%; }
+/* --- Image Element --- */
+.image-element {
+    background: rgba(200,200,200,0.3); border: 2px dashed #ccc; display: flex;
+    align-items: center; justify-content: center; color: #666; font-size: 14px; text-align: center; border-radius: 5px;
+}
+.image-element img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+/* --- Resize Handle --- */
+.resize-handle {
+    position: absolute; bottom: -5px; right: -5px; width: 10px; height: 10px;
+    background: #667eea; border-radius: 50%; cursor: nw-resize; display: none;
+}
+.canvas-element.selected .resize-handle { display: block; }
+/* --- File Input --- */
+.file-input { display: none; }
+/* --- Toast Notifications --- */
+.toast {
+    position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white;
+    padding: 15px 20px; border-radius: 5px; z-index: 1000; transform: translateX(400px);
+    transition: transform 0.3s ease;
+}
+.toast.show { transform: translateX(0);}
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .app-container { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; max-height: 40vh; }
+    .canvas-container { margin: 10px; }
+}

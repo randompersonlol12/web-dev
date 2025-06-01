@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Canvas Designer</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <h2>Canvas Designer</h2>
+            <div class="tool-section">
+                <h3>Add Elements</h3>
+                <div class="tool-buttons">
+                    <button class="tool-btn" data-type="text">📝 Text</button>
+                    <button class="tool-btn" data-type="rectangle">▭ Rectangle</button>
+                    <button class="tool-btn" data-type="circle">● Circle</button>
+                    <button class="tool-btn" data-type="image">🖼️ Image</button>
+                </div>
+            </div>
+            <div class="properties-panel" id="propertiesPanel">
+                <h3>Properties</h3>
+                <p style="color: #666; text-align: center;">Select an element to edit its properties</p>
+            </div>
+            <div class="action-buttons">
+                <button class="action-btn save-btn" id="saveBtn">💾 Save</button>
+                <button class="action-btn load-btn" id="loadBtn">📁 Load</button>
+                <button class="action-btn clear-btn" id="clearBtn">🗑️ Clear</button>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <div class="canvas" id="canvas"></div>
+        </div>
+    </div>
+    <input type="file" id="fileInput" class="file-input" accept="image/*">
+    <script src="main.js"></script>
+</body>
+</html>
