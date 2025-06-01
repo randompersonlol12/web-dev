@@ -1,5 +1,34 @@
+// main.js -- Refactored, modular, and documented
+
+/**
+ * CanvasDesigner App
+ * Provides an interactive canvas for adding, editing, and saving elements.
+ * Refactored for modularity, clarity, and performance.
+ */
+
+// Utility: Cookie management (can easily swap for localStorage if desired)
+const Storage = {
+  save(key, value) {
+    document.cookie = `${key}=${encodeURIComponent(JSON.stringify(value))}; max-age=31536000; path=/`;
+  },
+  load(key) {
+    const cookie = document.cookie.split(';').find(row => row.trim().startsWith(`${key}=`));
+    if (!cookie) return null;
+    try {
+      return JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+    } catch {
+      return null;
+    }
+  },
+  remove(key) {
+    document.cookie = `${key}=; Max-Age=0; path=/`;
+  }
+};
+
+// Main class
 class CanvasDesigner {
   constructor() {
+    /** @type {HTMLElement} */
     this.canvas = document.getElementById('canvas');
     this.selectedElement = null;
     this.elementCounter = 0;
@@ -8,14 +37,14 @@ class CanvasDesigner {
     this.canvasElements = new Map();
     this.currentImageElement = null;
 
-    // For drag fix
-    this.dragStartX = 0;
-    this.dragStartY = 0;
-    this.dragStartLeft = 0;
-    this.dragStartTop = 0;
+    // For drag/resize
+    this.dragStart = { x: 0, y: 0, left: 0, top: 0 };
+    this.resizeStart = { x: 0, y: 0, width: 0, height: 0 };
 
-    this.boundMouseMove = this.onMouseMove.bind(this);
-    this.boundMouseUp = this.onMouseUp.bind(this);
+    // Bind event handlers
+    this.onMouseMove = this.onMouseMove.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
+
     this.init();
   }
 
@@ -25,23 +54,27 @@ class CanvasDesigner {
   }
 
   setupEventListeners() {
-    // Add element buttons
-    document.querySelectorAll('.tool-btn[data-type]').forEach(btn => {
-      btn.addEventListener('click', () => this.addElement(btn.dataset.type));
-    });
+    // Tool buttons
+    document.querySelectorAll('.tool-btn[data-type]').forEach(btn =>
+      btn.addEventListener('click', () => this.addElement(btn.dataset.type))
+    );
 
-    // Canvas click to deselect
+    // Deselect on canvas click
     this.canvas.addEventListener('click', e => {
       if (e.target === this.canvas) this.deselectElement();
     });
 
-    // Prevent context menu
+    // Prevent context menu on canvas
     this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
     // Keyboard shortcuts
     document.addEventListener('keydown', e => {
       if (e.key === 'Delete' && this.selectedElement) this.deleteElement(this.selectedElement);
       if (e.key === 'Escape') this.deselectElement();
+      // Arrow keys for moving elements
+      if (this.selectedElement && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        this.moveSelectedElement(e.key);
+      }
     });
 
     // Action buttons
@@ -51,7 +84,7 @@ class CanvasDesigner {
       if (confirm('Are you sure you want to clear the entire canvas?')) this.clearCanvas();
     });
 
-    // File input
+    // File input for images
     document.getElementById('fileInput').addEventListener('change', e => {
       const file = e.target.files[0];
       this.handleImageUpload(file);
@@ -65,7 +98,9 @@ class CanvasDesigner {
     const element = document.createElement('div');
     element.id = elementId;
     element.className = `canvas-element ${type}-element`;
+    element.tabIndex = 0;
 
+    // Default properties
     const defaultProps = {
       type,
       x: 50 + (this.elementCounter * 20),
@@ -75,7 +110,9 @@ class CanvasDesigner {
       color: type === 'text' ? '#000000' : '#667eea',
       backgroundColor: type === 'text' ? '#ffffff' : '#667eea',
       fontSize: 16,
-      text: type === 'text' ? 'Sample Text' : (type === 'rectangle' ? 'Rectangle' : type === 'circle' ? 'Circle' : ''),
+      text: type === 'text'
+        ? 'Sample Text'
+        : (type === 'rectangle' ? 'Rectangle' : type === 'circle' ? 'Circle' : ''),
       imageUrl: ''
     };
 
@@ -92,51 +129,74 @@ class CanvasDesigner {
     element.style.top = props.y + 'px';
     element.style.width = props.width + 'px';
     element.style.height = props.height + 'px';
+    element.setAttribute('tabindex', 0);
+    let innerHTML = '';
     switch (props.type) {
       case 'text':
-        element.innerHTML = `
+        element.className = 'canvas-element text-element';
+        innerHTML = `
           <div style="color: ${props.color}; font-size: ${props.fontSize}px; background: ${props.backgroundColor}; padding: 10px; border-radius: 5px; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            ${props.text}
+            ${this.escapeHtml(props.text)}
           </div>
-          <div class="resize-handle"></div>
+          <div class="resize-handle" tabindex="0" aria-label="Resize Element"></div>
         `;
         break;
       case 'rectangle':
-        element.className = `canvas-element shape-element rectangle`;
+        element.className = 'canvas-element shape-element rectangle';
         element.style.backgroundColor = props.backgroundColor;
-        element.innerHTML = `${props.text}<div class="resize-handle"></div>`;
+        innerHTML = `${this.escapeHtml(props.text)}<div class="resize-handle" tabindex="0" aria-label="Resize Element"></div>`;
         break;
       case 'circle':
-        element.className = `canvas-element shape-element circle`;
+        element.className = 'canvas-element shape-element circle';
         element.style.backgroundColor = props.backgroundColor;
-        element.innerHTML = `${props.text}<div class="resize-handle"></div>`;
+        innerHTML = `${this.escapeHtml(props.text)}<div class="resize-handle" tabindex="0" aria-label="Resize Element"></div>`;
         break;
       case 'image':
-        element.innerHTML = props.imageUrl ?
-          `<img src="${props.imageUrl}" alt="Canvas Image" /><div class="resize-handle"></div>` :
-          `Click to add image<div class="resize-handle"></div>`;
+        element.className = 'canvas-element image-element';
+        innerHTML = props.imageUrl
+          ? `<img src="${props.imageUrl}" alt="Canvas Image" /><div class="resize-handle" tabindex="0" aria-label="Resize Element"></div>`
+          : `Click to add image<div class="resize-handle" tabindex="0" aria-label="Resize Element"></div>`;
+        break;
+      default:
         break;
     }
+    element.innerHTML = innerHTML;
   }
 
   setupElementInteractions(element) {
+    // Remove previous listeners
+    element.onmousedown = null;
+    element.ondblclick = null;
+    element.onfocus = () => this.selectElement(element);
+    element.onkeydown = e => {
+      if (e.key === 'Delete') this.deleteElement(element);
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        this.moveSelectedElement(e.key, 10);
+        e.preventDefault();
+      }
+    };
+
     element.onmousedown = e => {
+      // Resize handle
       if (e.target.classList.contains('resize-handle')) {
         this.isResizing = true;
         this.startResize(e, element);
         return;
       }
+      // Start drag
       this.selectElement(element);
       this.isDragging = true;
-      // FIXED: Proper drag start values
-      this.dragStartX = e.clientX;
-      this.dragStartY = e.clientY;
-      this.dragStartLeft = parseInt(element.style.left, 10) || 0;
-      this.dragStartTop = parseInt(element.style.top, 10) || 0;
-      document.addEventListener('mousemove', this.boundMouseMove);
-      document.addEventListener('mouseup', this.boundMouseUp);
+      this.dragStart = {
+        x: e.clientX,
+        y: e.clientY,
+        left: parseInt(element.style.left, 10) || 0,
+        top: parseInt(element.style.top, 10) || 0
+      };
+      document.addEventListener('mousemove', this.onMouseMove);
+      document.addEventListener('mouseup', this.onMouseUp);
       e.preventDefault();
     };
+
     element.ondblclick = e => {
       const props = this.canvasElements.get(element.id);
       if (props.type === 'image' && !props.imageUrl) {
@@ -150,13 +210,12 @@ class CanvasDesigner {
     if (this.isDragging && this.selectedElement) {
       const element = this.selectedElement;
       const props = this.canvasElements.get(element.id);
-      // FIXED: Use the difference from drag start!
-      const deltaX = e.clientX - this.dragStartX;
-      const deltaY = e.clientY - this.dragStartY;
-      const newLeft = this.dragStartLeft + deltaX;
-      const newTop = this.dragStartTop + deltaY;
-      element.style.left = newLeft + 'px';
-      element.style.top = newTop + 'px';
+      const deltaX = e.clientX - this.dragStart.x;
+      const deltaY = e.clientY - this.dragStart.y;
+      const newLeft = this.dragStart.left + deltaX;
+      const newTop = this.dragStart.top + deltaY;
+      element.style.left = `${newLeft}px`;
+      element.style.top = `${newTop}px`;
       props.x = newLeft;
       props.y = newTop;
     }
@@ -165,23 +224,23 @@ class CanvasDesigner {
   onMouseUp() {
     this.isDragging = false;
     this.isResizing = false;
-    document.removeEventListener('mousemove', this.boundMouseMove);
-    document.removeEventListener('mouseup', this.boundMouseUp);
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
   }
 
   startResize(e, element) {
-    let startX = e.clientX;
-    let startY = e.clientY;
-    let startWidth = parseInt(element.style.width, 10) || 100;
-    let startHeight = parseInt(element.style.height, 10) || 100;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = parseInt(element.style.width, 10) || 100;
+    const startHeight = parseInt(element.style.height, 10) || 100;
     const handleResize = e2 => {
       if (!this.isResizing) return;
       const deltaX = e2.clientX - startX;
       const deltaY = e2.clientY - startY;
       const newWidth = Math.max(50, startWidth + deltaX);
       const newHeight = Math.max(30, startHeight + deltaY);
-      element.style.width = newWidth + 'px';
-      element.style.height = newHeight + 'px';
+      element.style.width = `${newWidth}px`;
+      element.style.height = `${newHeight}px`;
       const props = this.canvasElements.get(element.id);
       props.width = newWidth;
       props.height = newHeight;
@@ -201,6 +260,7 @@ class CanvasDesigner {
     this.deselectElement();
     this.selectedElement = element;
     element.classList.add('selected');
+    element.focus();
     this.updatePropertiesPanel(element);
   }
 
@@ -281,18 +341,21 @@ class CanvasDesigner {
       </div>
     `;
     panel.innerHTML = html;
+
     // Property change events
     panel.querySelectorAll('input,textarea').forEach(input => {
       input.onchange = () => {
         const prop = input.dataset.prop;
         let value = input.value;
-        if (['x','y','width','height','fontSize'].includes(prop)) value = parseInt(value, 10);
+        if (['x', 'y', 'width', 'height', 'fontSize'].includes(prop)) value = parseInt(value, 10);
         this.updateProperty(input.dataset.id, prop, value);
       };
     });
+
     // Delete button
     const delBtn = panel.querySelector('#deleteBtn');
     if (delBtn) delBtn.onclick = () => this.deleteElement(element);
+
     // Upload button
     const uploadBtn = panel.querySelector('#uploadBtn');
     if (uploadBtn) uploadBtn.onclick = () => {
@@ -315,6 +378,7 @@ class CanvasDesigner {
   }
 
   deleteElement(element) {
+    if (!element) return;
     if (element === this.selectedElement) this.deselectElement();
     this.canvasElements.delete(element.id);
     element.remove();
@@ -326,24 +390,22 @@ class CanvasDesigner {
       elements: Array.from(this.canvasElements.entries()),
       counter: this.elementCounter
     };
-    document.cookie = `canvasData=${encodeURIComponent(JSON.stringify(canvasState))}; max-age=31536000; path=/`;
+    Storage.save('canvasData', canvasState);
     this.showToast('Canvas saved successfully!');
   }
 
   loadCanvas() {
-    const cookie = document.cookie.split(';').find(row => row.trim().startsWith('canvasData='));
-    if (cookie) {
+    const data = Storage.load('canvasData');
+    if (data) {
       try {
-        const data = JSON.parse(decodeURIComponent(cookie.split('=')[1]));
         this.clearCanvas(false);
         this.elementCounter = data.counter || 0;
         data.elements.forEach(([id, props]) => {
           const element = document.createElement('div');
           element.id = id;
-          element.className = `canvas-element ${props.type}-element`;
-          this.canvasElements.set(id, props);
           this.renderElement(element, props);
           this.setupElementInteractions(element);
+          this.canvasElements.set(id, props);
           this.canvas.appendChild(element);
         });
         this.showToast('Canvas loaded successfully!');
@@ -379,8 +441,8 @@ class CanvasDesigner {
   }
 
   loadFromStorage() {
-    const cookie = document.cookie.split(';').find(row => row.trim().startsWith('canvasData='));
-    if (cookie) this.loadCanvas();
+    const data = Storage.load('canvasData');
+    if (data) this.loadCanvas();
   }
 
   showToast(message) {
@@ -394,9 +456,38 @@ class CanvasDesigner {
       setTimeout(() => toast.remove(), 300);
     }, 3000);
   }
+
+  moveSelectedElement(key, step = 5) {
+    if (!this.selectedElement) return;
+    const props = this.canvasElements.get(this.selectedElement.id);
+    switch (key) {
+      case 'ArrowUp':
+        props.y = Math.max(0, props.y - step);
+        break;
+      case 'ArrowDown':
+        props.y += step;
+        break;
+      case 'ArrowLeft':
+        props.x = Math.max(0, props.x - step);
+        break;
+      case 'ArrowRight':
+        props.x += step;
+        break;
+    }
+    this.selectedElement.style.left = props.x + 'px';
+    this.selectedElement.style.top = props.y + 'px';
+    this.updatePropertiesPanel(this.selectedElement);
+  }
+
+  // Sanitize user input (XSS protection)
+  escapeHtml(text) {
+    return text.replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[m]));
+  }
 }
 
-// Initialize app when DOM is loaded
+// App startup
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new CanvasDesigner();
 });

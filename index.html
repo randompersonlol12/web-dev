@@ -4,13 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Canvas Designer</title>
+  <meta name="description" content="A simple web-based interactive canvas designer.">
   <link rel="stylesheet" href="main.css">
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <div class="app-container">
-    <aside class="sidebar" aria-label="Sidebar">
+    <aside class="sidebar" aria-label="Sidebar" role="complementary">
       <h2>Canvas Designer</h2>
-      <section class="tool-section">
+      <nav class="tool-section" aria-label="Add Elements">
         <h3>Add Elements</h3>
         <div class="tool-buttons">
           <button class="tool-btn" data-type="text" aria-label="Add Text">📝 Text</button>
@@ -18,8 +20,8 @@
           <button class="tool-btn" data-type="circle" aria-label="Add Circle">● Circle</button>
           <button class="tool-btn" data-type="image" aria-label="Add Image">🖼️ Image</button>
         </div>
-      </section>
-      <section class="properties-panel" id="propertiesPanel">
+      </nav>
+      <section class="properties-panel" id="propertiesPanel" aria-label="Element Properties">
         <h3>Properties</h3>
         <p class="properties-help">Select an element to edit its properties</p>
       </section>
@@ -29,11 +31,11 @@
         <button class="action-btn clear-btn" id="clearBtn" aria-label="Clear Canvas">🗑️ Clear</button>
       </div>
     </aside>
-    <main class="canvas-container">
+    <main class="canvas-container" role="main">
       <div class="canvas" id="canvas" tabindex="0" aria-label="Canvas Area"></div>
     </main>
   </div>
-  <input type="file" id="fileInput" class="file-input" accept="image/*" aria-label="Upload Image">
-  <script src="main.js"></script>
+  <input type="file" id="fileInput" class="file-input" accept="image/*" aria-label="Upload Image" />
+  <script src="main.js" type="module"></script>
 </body>
 </html>
